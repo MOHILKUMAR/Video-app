@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { fetchPopularVideos } from "./youtubeApi";
 
 // status: "loading"     first page on its way
 //         "ready"       idle, more pages may follow
@@ -12,20 +11,25 @@ const INITIAL = { videos: [], nextPageToken: null, status: "loading", error: nul
 // restores every page you had scrolled through (and your scroll position).
 const feedCache = new Map();
 
-// Trending can shift between page requests; drop any repeats.
+// Results can shift between page requests; drop any repeats.
 const mergeUnique = (current, incoming) => {
   const seen = new Set(current.map((v) => v.id));
   return [...current, ...incoming.filter((v) => !seen.has(v.id))];
 };
 
-const useVideoFeed = (categoryId) => {
-  const cacheKey = categoryId ?? "all";
+// A paginated list of videos for infinite scroll.
+//   cacheKey:  identifies the feed, e.g. "popular:music" or "search:react"
+//   fetchPage: (pageToken) => Promise<{ videos, nextPageToken }>
+const useVideoFeed = (cacheKey, fetchPage) => {
   const [feed, setFeed] = useState(() => feedCache.get(cacheKey) ?? INITIAL);
   const [attempt, setAttempt] = useState(0);
   const feedRef = useRef(feed);
   feedRef.current = feed;
-  // Bumped on every category change, so late responses for an old
-  // category are ignored.
+  // fetchPage is a new function on every render; keep the latest one.
+  const fetchPageRef = useRef(fetchPage);
+  fetchPageRef.current = fetchPage;
+  // Bumped whenever the feed changes, so late responses for an old
+  // category or search are ignored.
   const generationRef = useRef(0);
 
   useEffect(() => {
@@ -37,7 +41,7 @@ const useVideoFeed = (categoryId) => {
     }
 
     setFeed(INITIAL);
-    fetchPopularVideos(categoryId).then(
+    fetchPageRef.current(null).then(
       ({ videos, nextPageToken }) => {
         if (generation !== generationRef.current) return;
         const next = { videos, nextPageToken, status: "ready", error: null };
@@ -49,7 +53,7 @@ const useVideoFeed = (categoryId) => {
         setFeed({ ...INITIAL, status: "error", error });
       }
     );
-  }, [cacheKey, categoryId, attempt]);
+  }, [cacheKey, attempt]);
 
   const loadMore = useCallback(() => {
     const { status, nextPageToken } = feedRef.current;
@@ -61,7 +65,7 @@ const useVideoFeed = (categoryId) => {
     feedRef.current = { ...feedRef.current, status: "loadingMore", error: null };
     setFeed(feedRef.current);
 
-    fetchPopularVideos(categoryId, nextPageToken).then(
+    fetchPageRef.current(nextPageToken).then(
       ({ videos, nextPageToken: following }) => {
         if (generation !== generationRef.current) return;
         const next = {
@@ -78,7 +82,7 @@ const useVideoFeed = (categoryId) => {
         setFeed((current) => ({ ...current, status: "errorMore", error }));
       }
     );
-  }, [cacheKey, categoryId]);
+  }, [cacheKey]);
 
   return {
     ...feed,

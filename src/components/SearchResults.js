@@ -4,15 +4,19 @@ import { MdSearchOff } from "react-icons/md";
 import { VideoRow } from "./VideoCard";
 import { VideoRowShimmer } from "./Shimmer";
 import ErrorMessage from "./ErrorMessage";
+import EndOfFeed from "./EndOfFeed";
+import InfiniteScrollTrigger from "./InfiniteScrollTrigger";
 import { searchVideos } from "../utils/youtubeApi";
-import useAsync from "../utils/useAsync";
+import useVideoFeed from "../utils/useVideoFeed";
+
+const NO_RESULTS = Promise.resolve({ videos: [], nextPageToken: null });
 
 const SearchResults = () => {
   const [searchParams] = useSearchParams();
   const query = (searchParams.get("search_query") ?? "").trim();
-  const { status, data, error, retry } = useAsync(
-    () => (query ? searchVideos(query) : Promise.resolve([])),
-    [query]
+  const { videos, status, error, hasMore, loadMore, retry } = useVideoFeed(
+    `search:${query.toLowerCase()}`,
+    (pageToken) => (query ? searchVideos(query, pageToken) : NO_RESULTS)
   );
 
   return (
@@ -23,7 +27,7 @@ const SearchResults = () => {
         <ErrorMessage title="Search failed" message={error.message} onRetry={retry} />
       )}
 
-      {status === "success" && data.length === 0 && (
+      {status === "ready" && videos.length === 0 && (
         <div className="flex flex-col items-center py-20 text-center">
           <MdSearchOff size={56} className="text-muted" />
           <p className="mt-4 text-lg font-medium">
@@ -37,12 +41,38 @@ const SearchResults = () => {
         </div>
       )}
 
-      {status === "success" && data.length > 0 && (
-        <div className="flex flex-col gap-6 @2xl:gap-4">
-          {data.map((video) => (
-            <VideoRow key={video.id} video={video} />
-          ))}
-        </div>
+      {videos.length > 0 && (
+        <>
+          <div className="flex flex-col gap-6 @2xl:gap-4">
+            {videos.map((video) => (
+              <VideoRow key={video.id} video={video} />
+            ))}
+            {status === "loadingMore" && <VideoRowShimmer count={3} />}
+          </div>
+
+          {/* Search pages cost 100 quota units each (trending pages cost 1),
+              so start loading closer to the bottom than the home feed does. */}
+          {status === "ready" && hasMore && (
+            <InfiniteScrollTrigger onVisible={loadMore} rootMargin="400px" />
+          )}
+
+          {status === "errorMore" && (
+            <div className="mt-8">
+              <ErrorMessage
+                title="Couldn't load more results"
+                message={error.message}
+                onRetry={loadMore}
+              />
+            </div>
+          )}
+
+          {status === "ready" && !hasMore && (
+            <EndOfFeed
+              title="No more results"
+              message={`That's everything YouTube returned for "${query}".`}
+            />
+          )}
+        </>
       )}
     </div>
   );

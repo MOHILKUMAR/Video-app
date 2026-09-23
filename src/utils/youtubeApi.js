@@ -127,17 +127,21 @@ export const fetchPopularVideos = (categoryId, pageToken = null) =>
     };
   });
 
-export const searchVideos = (query) =>
-  cached(`search:${query.toLowerCase()}`, async () => {
-    // search.list costs 100 units, so only ask it for ids...
+// One page of search results, paged the same way as fetchPopularVideos.
+export const searchVideos = (query, pageToken = null) =>
+  cached(`search:${query.toLowerCase()}:${pageToken ?? "first"}`, async () => {
+    // search.list costs 100 units per call whether it returns 5 or 50
+    // results, so take the maximum 50 and only ask it for ids...
     const results = await request("search", {
       part: "id",
       type: "video",
-      maxResults: "25",
+      maxResults: "50",
       q: query,
+      ...(pageToken && { pageToken }),
     });
     const ids = results.items.map((item) => item.id.videoId);
-    if (ids.length === 0) return [];
+    // An empty page ends the feed, even if YouTube offers another token.
+    if (ids.length === 0) return { videos: [], nextPageToken: null };
 
     // ...then get titles, views and durations from videos.list (1 unit).
     const details = await request("videos", {
@@ -147,7 +151,10 @@ export const searchVideos = (query) =>
     const videos = details.items
       .map(normalizeVideo)
       .sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id));
-    return withChannelAvatars(videos);
+    return {
+      videos: await withChannelAvatars(videos),
+      nextPageToken: results.nextPageToken ?? null,
+    };
   });
 
 export const fetchVideoById = (id) =>

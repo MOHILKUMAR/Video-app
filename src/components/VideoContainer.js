@@ -1,37 +1,22 @@
 import React from "react";
 import { useSearchParams } from "react-router-dom";
-import { MdOutlineCheckCircle } from "react-icons/md";
 import VideoCard, { VideoGrid } from "./VideoCard";
 import { VideoCardShimmer, VideoGridShimmer } from "./Shimmer";
 import ErrorMessage from "./ErrorMessage";
+import EndOfFeed from "./EndOfFeed";
 import InfiniteScrollTrigger from "./InfiniteScrollTrigger";
 import { SAMPLE_VIDEOS, getCategory } from "../utils/constants";
+import { fetchPopularVideos } from "../utils/youtubeApi";
 import useVideoFeed from "../utils/useVideoFeed";
 
 const LOADING_MORE_PLACEHOLDERS = 8;
-
-const EndOfFeed = () => (
-  <div className="mt-12 flex flex-col items-center gap-2 text-center">
-    <MdOutlineCheckCircle size={40} className="text-muted" />
-    <p className="font-medium">You're all caught up</p>
-    <p className="text-sm text-muted">
-      That's every trending video in this category right now.
-    </p>
-    <button
-      type="button"
-      onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-      className="mt-2 rounded-full bg-surface px-4 py-2 text-sm font-medium transition-colors hover:bg-surface-hover"
-    >
-      Back to top
-    </button>
-  </div>
-);
 
 const VideoContainer = () => {
   const [searchParams] = useSearchParams();
   const category = getCategory(searchParams.get("category"));
   const { videos, status, error, hasMore, loadMore, retry } = useVideoFeed(
-    category.categoryId
+    `popular:${category.slug}`,
+    (pageToken) => fetchPopularVideos(category.categoryId, pageToken)
   );
 
   if (status === "loading") return <VideoGridShimmer />;
@@ -86,7 +71,12 @@ const VideoContainer = () => {
         </div>
       )}
 
-      {status === "ready" && !hasMore && videos.length > 0 && <EndOfFeed />}
+      {status === "ready" && !hasMore && videos.length > 0 && (
+        <EndOfFeed
+          title="You're all caught up"
+          message="That's every trending video in this category right now."
+        />
+      )}
     </>
   );
 };

@@ -2,14 +2,14 @@
 
 A modern, responsive YouTube clone built with **React 19**, **Redux Toolkit**, **React Router 7** and **Tailwind CSS 4**, powered by the **YouTube Data API v3**.
 
-Browse trending videos by category with infinite scroll, search with live autocomplete suggestions, and watch videos in an embedded player, in light or dark mode, on any screen size.
+Browse trending videos by category, search with live autocomplete suggestions, scroll endlessly through both, and watch videos in an embedded player, in light or dark mode, on any screen size.
 
 ---
 
 ## 🚀 Features
 
 - 🔥 **Trending videos**: live "most popular" videos for India, with views, upload time, duration and channel pictures
-- ♾️ **Infinite scroll**: the next 24 videos load automatically as you near the bottom, until the whole trending list is shown
+- ♾️ **Infinite scroll**: on the home page (24 videos per page) and in search results (50 per page), more load automatically as you near the bottom, until YouTube has no more
 - 🗂️ **Categories**: Music, Gaming, Sports, News and more, from the chip bar or the sidebar
 - 🔍 **Search with autocomplete**: debounced live suggestions, full keyboard support (↑ ↓ Enter Esc)
 - 📺 **Watch page**: embedded player, video details with "Show more", and an "Up next" list
@@ -178,8 +178,9 @@ Video-app/
     │   ├── ButtonList.js      # Scrollable category chips
     │   ├── VideoContainer.js  # Trending videos grid with infinite scroll
     │   ├── InfiniteScrollTrigger.js # Loads more when it nears the screen
+    │   ├── EndOfFeed.js       # "You're all caught up" / "No more results"
     │   ├── VideoCard.js       # Grid card, search row, compact card
-    │   ├── SearchResults.js   # /results page
+    │   ├── SearchResults.js   # /results page with infinite scroll
     │   ├── WatchPage.js       # /watch page: player, details, up next
     │   ├── Shimmer.js         # Loading skeletons
     │   ├── ChannelAvatar.js   # Channel picture or letter fallback
@@ -194,7 +195,7 @@ Video-app/
         ├── apiKeyExpiry.js    # Days used / left for the API key
         ├── searchSuggestions.js # JSONP autocomplete
         ├── useAsync.js        # loading / success / error hook
-        ├── useVideoFeed.js    # Paginated trending feed for infinite scroll
+        ├── useVideoFeed.js    # Paginated feed for infinite scroll (home + search)
         ├── useMediaQuery.js   # Screen size hook
         ├── format.js          # "1.2M views", "3 days ago", "4:13"
         └── constants.js       # Categories, region, sample videos
@@ -387,7 +388,7 @@ See [Shimmer.js](src/components/Shimmer.js) for the grid, search row, compact ca
 ### 12. Working with a real-world API
 
 - **Environment variables:** the key lives in `.env` and is read as `process.env.YOUTUBE_API_KEY` (Parcel inlines it at build time).
-- **Designing around quota:** `search.list` costs 100 units while `videos.list` costs 1, so search asks only for video ids, then fetches views, durations and titles in one cheap `videos.list` call.
+- **Designing around quota:** `search.list` costs 100 units while `videos.list` costs 1, so search asks only for video ids, then fetches views, durations and titles in one cheap `videos.list` call. And since a search call costs the same whether it returns 5 or 50 results, each search page asks for the maximum 50.
 - **Human-friendly errors:** API error codes like `API_KEY_INVALID` or `quotaExceeded` are mapped to clear messages, with a "Try again" button.
 - **Graceful fallback:** if trending videos fail, sample videos are shown so the app is never empty.
 
@@ -399,7 +400,21 @@ See [Shimmer.js](src/components/Shimmer.js) for the grid, search row, compact ca
 
 ### 14. Infinite scroll with IntersectionObserver and page tokens
 
-**Pagination with tokens:** the API returns 24 videos at a time plus a `nextPageToken`. Sending that token back returns the next 24. When no token comes back, you've reached the end ([youtubeApi.js](src/utils/youtubeApi.js)).
+Both the home page and search results load more videos as you scroll.
+
+**Pagination with tokens:** the API returns one page of results (24 trending videos, or 50 search results) plus a `nextPageToken`. Sending that token back returns the next page. When no token comes back, you've reached the end ([youtubeApi.js](src/utils/youtubeApi.js)).
+
+**One hook for every feed:** `useVideoFeed(cacheKey, fetchPage)` knows nothing about trending or search. Each page passes in how to fetch a page, and the hook handles the rest ([useVideoFeed.js](src/utils/useVideoFeed.js)):
+
+```js
+// Home page
+useVideoFeed(`popular:${category.slug}`, (pageToken) =>
+  fetchPopularVideos(category.categoryId, pageToken));
+
+// Search results
+useVideoFeed(`search:${query.toLowerCase()}`, (pageToken) =>
+  searchVideos(query, pageToken));
+```
 
 **Detecting the bottom without scroll events:** an invisible marker sits after the grid, and an `IntersectionObserver` reports when it comes near the screen. This is cheaper than listening to every `scroll` event and measuring positions by hand ([InfiniteScrollTrigger.js](src/components/InfiniteScrollTrigger.js)):
 
@@ -413,14 +428,17 @@ const observer = new IntersectionObserver(
 observer.observe(markerRef.current);
 ```
 
+Search uses a smaller head start (`400px`): a search page costs 102 quota units against 2 for trending, so it waits until you're closer to the bottom before spending them.
+
 **The details that make it feel right** ([useVideoFeed.js](src/utils/useVideoFeed.js)):
 
 - **No double loads:** a ref is updated to "loadingMore" immediately, so a second trigger before React re-renders is ignored.
-- **No duplicates:** trending can shift between requests, so videos already on screen are filtered out when a new page is added.
-- **No stale pages:** switching category bumps a counter, and late responses for the old category are thrown away.
+- **No duplicates:** results can shift between requests, so videos already on screen are filtered out when a new page is added.
+- **No stale pages:** switching category or search bumps a counter, and late responses for the old one are thrown away.
 - **No retry loops:** after a failed page, the marker is removed and a "Try again" button appears instead.
+- **No empty-page loops:** an empty page ends the feed, even if YouTube still sends another token.
 - **Back button keeps your place:** loaded pages are kept in memory, so returning from a video restores the full list and your scroll position.
-- **Shimmer cards** fill the next row while a page loads, and "You're all caught up" appears at the end.
+- **Shimmer placeholders** fill in while a page loads, and "You're all caught up" (home) or "No more results" (search) appears at the end.
 
 ---
 
@@ -432,12 +450,13 @@ The YouTube Data API gives **10,000 free units per day** (reset at midnight Paci
 |---|---|---|
 | Open home or a category | `videos.list` + `channels.list` | 2 |
 | Scroll to load 24 more videos | `videos.list` + `channels.list` | 2 |
-| Search | `search.list` + `videos.list` + `channels.list` | 102 |
+| Search (first 50 results) | `search.list` + `videos.list` + `channels.list` | 102 |
+| Scroll to load 50 more search results | `search.list` + `videos.list` + `channels.list` | 102 |
 | Open a watch link directly | `videos.list` + `channels.list` | 2 |
 | Repeat any of the above in the same session | served from cache | 0 |
 | Autocomplete suggestions | Google Suggest, not the Data API | 0 |
 
-That is roughly **95 searches a day**, plus plenty of browsing.
+That is roughly **95 search pages a day** (about 4,500 results), plus plenty of browsing. Search pages are the expensive part, so scrolling deep into search results uses quota much faster than the home page.
 
 ---
 
@@ -459,7 +478,7 @@ That is roughly **95 searches a day**, plus plenty of browsing.
 
 ## 💡 Ideas to Extend
 
-- Infinite scroll on search results (`search.list` also returns a `nextPageToken`, but each page costs 100 units)
+- Search filters (upload date, duration, sort order) using `search.list` parameters
 - Comments on the watch page (`commentThreads.list`)
 - Watch history and "liked videos" saved in Redux or `localStorage`
 - A Shorts page with vertical, swipeable videos
