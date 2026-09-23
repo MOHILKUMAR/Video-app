@@ -5,7 +5,7 @@
   "scripts": {
     "test": "jest",
     "start": "parcel index.html",
-    "build": "pracel build index.html"
+    "build": "parcel build index.html"
   },
   "repository": {
     "type": "git",
@@ -35,5 +35,8 @@
   },
   "devDependencies": {
     "tailwind": "^2.3.1"
+  },
+  "@parcel/resolver-default": {
+    "packageExports": true
   }
 }
