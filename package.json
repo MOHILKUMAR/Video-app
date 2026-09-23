@@ -33,6 +33,9 @@
     "redux": "^5.0.1",
     "tailwindcss": "^4.1.5"
   },
+  "engines": {
+    "node": "22.x"
+  },
   "@parcel/resolver-default": {
     "packageExports": true
   }

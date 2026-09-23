@@ -67,7 +67,7 @@ Browse trending videos by category, search with live autocomplete suggestions, s
 | Technology | Version | What it does in this project |
 |---|---|---|
 | [Parcel](https://parceljs.org/) | 2.16 | Zero-config dev server with hot reload (`npm start`) and production bundler (`npm run build`); transpiles JSX, runs PostCSS, and inlines `process.env` values from `.env` |
-| [Node.js](https://nodejs.org/) + npm | 18+ | Runs Parcel and installs dependencies (tested on Node 22 locally and Node 24 on Vercel) |
+| [Node.js](https://nodejs.org/) + npm | 22 | Runs Parcel and installs dependencies; pinned with `"engines": { "node": "22.x" }` so Vercel builds with the same version |
 | [Vercel](https://vercel.com/) | n/a | Hosting: builds on every push to `main`, with `vercel.json` rewrites for client-side routes |
 
 ### APIs and data
@@ -98,7 +98,7 @@ Browse trending videos by category, search with live autocomplete suggestions, s
 
 ### 1. Prerequisites
 
-- [Node.js](https://nodejs.org/) 18 or newer
+- [Node.js](https://nodejs.org/) 22 (the version set in `package.json` and used by Vercel)
 - A YouTube Data API v3 key (free)
 
 ### 2. Get a YouTube API key
