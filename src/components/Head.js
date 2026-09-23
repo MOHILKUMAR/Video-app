@@ -12,6 +12,10 @@ import IconButton from "./IconButton";
 import Logo from "./Logo";
 import SearchBar from "./SearchBar";
 
+// The API key reminder is for the developer only. Parcel sets NODE_ENV to
+// "production" for `npm run build`, which drops the badge from the bundle.
+const SHOW_API_KEY_BADGE = process.env.NODE_ENV !== "production";
+
 const Head = () => {
   const dispatch = useDispatch();
   const theme = useSelector((store) => store.app.theme);
@@ -66,7 +70,7 @@ const Head = () => {
       </div>
 
       <div className={`${hideOnMobileSearch} shrink-0 items-center gap-1 sm:gap-2`}>
-        <ApiKeyCounter />
+        {SHOW_API_KEY_BADGE && <ApiKeyCounter />}
         <IconButton
           label="Search"
           className="md:hidden"
@@ -87,7 +91,7 @@ const Head = () => {
         {/* Decorative, so phones drop it to make room for the API badge. */}
         <FaUserCircle
           size={32}
-          className="ml-1 hidden text-muted sm:block"
+          className={`ml-1 text-muted ${SHOW_API_KEY_BADGE ? "hidden sm:block" : ""}`}
           aria-hidden="true"
         />
       </div>

@@ -15,7 +15,7 @@ Browse trending videos by category, search with live autocomplete suggestions, a
 - ✨ **Shimmer loading**: skeleton placeholders shaped like the real content while data loads
 - 🌙 **Dark mode**: follows your system setting, remembers your choice, and never flashes the wrong theme
 - 📱 **Responsive layout**: full sidebar on desktop, icon rail on tablets, slide-in drawer and full-width search on phones
-- ⏳ **API key reminder**: a header badge counts down the days left on your API key and turns amber, then red, as the end gets close
+- ⏳ **API key reminder** (development only): a header badge counts down the days left on your API key and turns amber, then red, as the end gets close
 - ⚠️ **Friendly errors**: clear messages for a missing or invalid key and quota limits, a "Try again" button, and a 404 page
 
 ---
@@ -140,7 +140,7 @@ npm run build
 
 ### 4. API key reminder
 
-When `YOUTUBE_API_KEY_CREATED` is set, the header shows how many days your key has left:
+When `YOUTUBE_API_KEY_CREATED` is set, the header shows how many days your key has left. The badge appears only in development (`npm start`); production builds (`npm run build`) leave it out, so visitors to your deployed site never see it.
 
 | Days left | Badge |
 |---|---|
