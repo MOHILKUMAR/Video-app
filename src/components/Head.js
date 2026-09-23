@@ -6,15 +6,12 @@ import { FaUserCircle } from "react-icons/fa";
 import { IoArrowBack, IoSearchOutline } from "react-icons/io5";
 import { MdOutlineDarkMode, MdOutlineLightMode } from "react-icons/md";
 import { setTheme, toggleDrawer, toggleMenu } from "../utils/appSlice";
+import { HAS_API_KEY_REMINDER } from "../utils/apiKeyExpiry";
 import useMediaQuery from "../utils/useMediaQuery";
 import ApiKeyCounter from "./ApiKeyCounter";
 import IconButton from "./IconButton";
 import Logo from "./Logo";
 import SearchBar from "./SearchBar";
-
-// The API key reminder is for the developer only. Parcel sets NODE_ENV to
-// "production" for `npm run build`, which drops the badge from the bundle.
-const SHOW_API_KEY_BADGE = process.env.NODE_ENV !== "production";
 
 const Head = () => {
   const dispatch = useDispatch();
@@ -70,7 +67,7 @@ const Head = () => {
       </div>
 
       <div className={`${hideOnMobileSearch} shrink-0 items-center gap-1 sm:gap-2`}>
-        {SHOW_API_KEY_BADGE && <ApiKeyCounter />}
+        {HAS_API_KEY_REMINDER && <ApiKeyCounter />}
         <IconButton
           label="Search"
           className="md:hidden"
@@ -91,7 +88,7 @@ const Head = () => {
         {/* Decorative, so phones drop it to make room for the API badge. */}
         <FaUserCircle
           size={32}
-          className={`ml-1 text-muted ${SHOW_API_KEY_BADGE ? "hidden sm:block" : ""}`}
+          className={`ml-1 text-muted ${HAS_API_KEY_REMINDER ? "hidden sm:block" : ""}`}
           aria-hidden="true"
         />
       </div>

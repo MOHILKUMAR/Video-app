@@ -13,6 +13,10 @@ const parseLocalDate = (value) => {
   return new Date(year, month - 1, day);
 };
 
+// The badge shows wherever a valid created date is set: .env locally, and
+// the project's environment variables on Vercel.
+export const HAS_API_KEY_REMINDER = parseLocalDate(CREATED) !== null;
+
 const startOfDay = (date) =>
   new Date(date.getFullYear(), date.getMonth(), date.getDate());
 

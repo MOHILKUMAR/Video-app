@@ -16,7 +16,7 @@ Browse trending videos by category, search with live autocomplete suggestions, s
 - ✨ **Shimmer loading**: skeleton placeholders shaped like the real content while data loads
 - 🌙 **Dark mode**: follows your system setting, remembers your choice, and never flashes the wrong theme
 - 📱 **Responsive layout**: full sidebar on desktop, icon rail on tablets, slide-in drawer and full-width search on phones
-- ⏳ **API key reminder** (development only): a header badge counts down the days left on your API key and turns amber, then red, as the end gets close
+- ⏳ **API key reminder**: a header badge counts down the days left on your API key and turns amber, then red, as the end gets close
 - ⚠️ **Friendly errors**: clear messages for a missing or invalid key and quota limits, a "Try again" button, and a 404 page
 
 ---
@@ -143,7 +143,7 @@ npm run build
 
 ### 4. API key reminder
 
-When `YOUTUBE_API_KEY_CREATED` is set, the header shows how many days your key has left. The badge appears only in development (`npm start`); production builds (`npm run build`) leave it out, so visitors to your deployed site never see it.
+When `YOUTUBE_API_KEY_CREATED` is set, the header shows how many days your key has left: in development from `.env`, and on the live site once the same variables are added in Vercel (see [Deploy to Vercel](#-deploy-to-vercel)). Everyone who visits the site sees it.
 
 | Days left | Badge |
 |---|---|
@@ -185,13 +185,13 @@ The repo includes a [`vercel.json`](vercel.json), so Vercel needs almost no setu
    | Name | Value | Environments |
    |---|---|---|
    | `YOUTUBE_API_KEY` | your API key | Production, Preview |
+   | `YOUTUBE_API_KEY_CREATED` | the day you created the key, e.g. `2026-09-23` (optional: shows the reminder badge) | Production, Preview |
+   | `YOUTUBE_API_KEY_VALID_DAYS` | e.g. `30` (optional, default 30) | Production, Preview |
 
 3. Click **Deploy**. Every push to `main` redeploys automatically.
 4. In the Google Cloud Console, add your Vercel address (for example `https://your-app.vercel.app/*`) to the key's **website restrictions**, next to `http://localhost:1234/*`.
 
-> **The key is read at build time.** Parcel copies `process.env.YOUTUBE_API_KEY` into the JavaScript bundle while building, so after adding or changing the variable in Vercel you must **redeploy** (Deployments → ⋯ → Redeploy) for it to take effect. `.env` is never uploaded to GitHub, so Vercel only knows the key through this setting.
-
-The API key reminder badge is development-only, so `YOUTUBE_API_KEY_CREATED` and `YOUTUBE_API_KEY_VALID_DAYS` aren't needed on Vercel.
+> **Variables are read at build time.** Parcel copies `process.env` values into the JavaScript bundle while building, so after adding or changing a variable in Vercel you must **redeploy** (Deployments → ⋯ → Redeploy) for it to take effect. `.env` is never uploaded to GitHub, so Vercel only knows these values through this setting. Without `YOUTUBE_API_KEY_CREATED`, the live site simply has no reminder badge.
 
 ---
 
