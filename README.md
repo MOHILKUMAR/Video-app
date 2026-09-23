@@ -67,7 +67,7 @@ Browse trending videos by category, search with live autocomplete suggestions, s
 | Technology | Version | What it does in this project |
 |---|---|---|
 | [Parcel](https://parceljs.org/) | 2.16 | Zero-config dev server with hot reload (`npm start`) and production bundler (`npm run build`); transpiles JSX, runs PostCSS, and inlines `process.env` values from `.env` |
-| [Node.js](https://nodejs.org/) + npm | 22 | Runs Parcel and installs dependencies; pinned with `"engines": { "node": "22.x" }` so Vercel builds with the same version |
+| [Node.js](https://nodejs.org/) + npm | 18+ | Runs Parcel and installs dependencies (tested on Node 22 and 24) |
 | [Vercel](https://vercel.com/) | n/a | Hosting: builds on every push to `main`, with `vercel.json` rewrites for client-side routes |
 
 ### APIs and data
@@ -98,7 +98,7 @@ Browse trending videos by category, search with live autocomplete suggestions, s
 
 ### 1. Prerequisites
 
-- [Node.js](https://nodejs.org/) 22 (the version set in `package.json` and used by Vercel)
+- [Node.js](https://nodejs.org/) 18 or newer
 - A YouTube Data API v3 key (free)
 
 ### 2. Get a YouTube API key
@@ -164,12 +164,16 @@ The repo includes a [`vercel.json`](vercel.json), so Vercel needs almost no setu
 
 ```json
 {
-  "buildCommand": "npm run build",
+  "buildCommand": "rm -rf dist && { PARCEL_WORKERS=0 npm run build || test -f dist/index.html; }",
   "outputDirectory": "dist",
   "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
 }
 ```
 
+- **`buildCommand`** works around a crash on Vercel's Linux build machines: Parcel finishes the build (`✨ Built in ...`) and then crashes with `SIGSEGV` while shutting down, which Vercel reports as a failed deploy.
+  - `PARCEL_WORKERS=0` runs Parcel without helper threads, avoiding the crash while they shut down.
+  - `|| test -f dist/index.html` is a safety net: if Parcel still crashes *after* writing the site, the build counts as successful.
+  - `rm -rf dist` runs first, so a real build error (which writes no `index.html`) still fails the deploy.
 - **`outputDirectory: "dist"`** is where Parcel writes the production build.
 - **`rewrites`** sends every page URL (`/watch?v=...`, `/results?...`) to `index.html` so React Router can handle it. Without it, refreshing or opening a shared link returns a Vercel **404**. Real files like the JS and CSS bundles are still served normally.
 
@@ -509,6 +513,8 @@ That is roughly **95 search pages a day** (about 4,500 results), plus plenty of 
 | Deployed site says "No YouTube API key found" | Add `YOUTUBE_API_KEY` in Vercel → Settings → Environment Variables, then **redeploy**. |
 | Deployed site says the key's restrictions block requests | Add your `*.vercel.app` address to the key's website restrictions in Google Cloud. |
 | Vercel shows 404 when refreshing `/watch` or `/results` | Make sure `vercel.json` (with the `rewrites` rule) is committed to the repo. |
+| Vercel: `Command "npm run build" exited with SIGSEGV` right after `✨ Built in ...` | Parcel crashing on shutdown on Linux. The `buildCommand` in `vercel.json` handles it; make sure it's committed. |
+| Deployed page is blank, and the JS bundle is only about 35 kB | Don't add `"engines": { "node": ... }` to `package.json`: Parcel then builds for Node.js instead of the browser and leaves React out of the bundle. Set the Node version in Vercel's project settings instead. |
 
 > **Security note:** in a frontend-only app the API key is included in the JavaScript sent to the browser, so anyone can find it. Always restrict the key to your website and to the YouTube Data API. For full protection, move API calls behind your own backend.
 
