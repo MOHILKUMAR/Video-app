@@ -109,16 +109,22 @@ const withChannelAvatars = async (videos) => {
   }
 };
 
-export const fetchPopularVideos = (categoryId) =>
-  cached(`popular:${categoryId ?? "all"}`, async () => {
+// One page of the trending chart. Pass the previous page's nextPageToken to
+// get the following page; nextPageToken is null after the last one.
+export const fetchPopularVideos = (categoryId, pageToken = null) =>
+  cached(`popular:${categoryId ?? "all"}:${pageToken ?? "first"}`, async () => {
     const json = await request("videos", {
       part: VIDEO_PARTS,
       chart: "mostPopular",
       regionCode: REGION_CODE,
       maxResults: "24",
       ...(categoryId && { videoCategoryId: categoryId }),
+      ...(pageToken && { pageToken }),
     });
-    return withChannelAvatars(json.items.map(normalizeVideo));
+    return {
+      videos: await withChannelAvatars(json.items.map(normalizeVideo)),
+      nextPageToken: json.nextPageToken ?? null,
+    };
   });
 
 export const searchVideos = (query) =>

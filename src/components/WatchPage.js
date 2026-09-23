@@ -90,7 +90,7 @@ const WatchPage = () => {
   const sampleVideo = SAMPLE_VIDEOS.find((v) => v.id === videoId);
   const video = details.data ?? (details.status === "error" ? sampleVideo : null);
   const upNextVideos = (
-    upNext.data ?? (upNext.status === "error" ? SAMPLE_VIDEOS : [])
+    upNext.data?.videos ?? (upNext.status === "error" ? SAMPLE_VIDEOS : [])
   )
     .filter((v) => v.id !== videoId)
     .slice(0, 16);

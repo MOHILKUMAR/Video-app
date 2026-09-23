@@ -2,13 +2,14 @@
 
 A modern, responsive YouTube clone built with **React 19**, **Redux Toolkit**, **React Router 7** and **Tailwind CSS 4**, powered by the **YouTube Data API v3**.
 
-Browse trending videos by category, search with live autocomplete suggestions, and watch videos in an embedded player, in light or dark mode, on any screen size.
+Browse trending videos by category with infinite scroll, search with live autocomplete suggestions, and watch videos in an embedded player, in light or dark mode, on any screen size.
 
 ---
 
 ## 🚀 Features
 
 - 🔥 **Trending videos**: live "most popular" videos for India, with views, upload time, duration and channel pictures
+- ♾️ **Infinite scroll**: the next 24 videos load automatically as you near the bottom, until the whole trending list is shown
 - 🗂️ **Categories**: Music, Gaming, Sports, News and more, from the chip bar or the sidebar
 - 🔍 **Search with autocomplete**: debounced live suggestions, full keyboard support (↑ ↓ Enter Esc)
 - 📺 **Watch page**: embedded player, video details with "Show more", and an "Up next" list
@@ -84,6 +85,7 @@ Browse trending videos by category, search with live autocomplete suggestions, a
 | `fetch` | YouTube Data API requests |
 | `localStorage` | Remembering the light or dark theme |
 | `window.matchMedia` | Following the system theme, and detecting desktop vs mobile in `useMediaQuery` |
+| `IntersectionObserver` | Infinite scroll: loading the next page when the end of the grid comes near |
 | `ResizeObserver` | Showing or hiding the category chip scroll arrows when their row changes width |
 | `Intl.NumberFormat` / `Intl.RelativeTimeFormat` | "1.2M views" and "3 days ago" |
 | `setTimeout` / `clearTimeout` | Debouncing search suggestions |
@@ -174,7 +176,8 @@ Video-app/
     │   ├── Footer.js
     │   ├── MainContainer.js   # Home page: chips + video grid
     │   ├── ButtonList.js      # Scrollable category chips
-    │   ├── VideoContainer.js  # Trending videos grid
+    │   ├── VideoContainer.js  # Trending videos grid with infinite scroll
+    │   ├── InfiniteScrollTrigger.js # Loads more when it nears the screen
     │   ├── VideoCard.js       # Grid card, search row, compact card
     │   ├── SearchResults.js   # /results page
     │   ├── WatchPage.js       # /watch page: player, details, up next
@@ -191,6 +194,7 @@ Video-app/
         ├── apiKeyExpiry.js    # Days used / left for the API key
         ├── searchSuggestions.js # JSONP autocomplete
         ├── useAsync.js        # loading / success / error hook
+        ├── useVideoFeed.js    # Paginated trending feed for infinite scroll
         ├── useMediaQuery.js   # Screen size hook
         ├── format.js          # "1.2M views", "3 days ago", "4:13"
         └── constants.js       # Categories, region, sample videos
@@ -393,6 +397,31 @@ See [Shimmer.js](src/components/Shimmer.js) for the grid, search row, compact ca
 - One `channels.list` call fetches up to 50 channel pictures at once instead of one request per video.
 - Cached results and data passed through navigation avoid duplicate requests.
 
+### 14. Infinite scroll with IntersectionObserver and page tokens
+
+**Pagination with tokens:** the API returns 24 videos at a time plus a `nextPageToken`. Sending that token back returns the next 24. When no token comes back, you've reached the end ([youtubeApi.js](src/utils/youtubeApi.js)).
+
+**Detecting the bottom without scroll events:** an invisible marker sits after the grid, and an `IntersectionObserver` reports when it comes near the screen. This is cheaper than listening to every `scroll` event and measuring positions by hand ([InfiniteScrollTrigger.js](src/components/InfiniteScrollTrigger.js)):
+
+```js
+const observer = new IntersectionObserver(
+  ([entry]) => {
+    if (entry.isIntersecting) onVisible(); // load the next page
+  },
+  { rootMargin: "800px" } // start 800 px early, so the user rarely waits
+);
+observer.observe(markerRef.current);
+```
+
+**The details that make it feel right** ([useVideoFeed.js](src/utils/useVideoFeed.js)):
+
+- **No double loads:** a ref is updated to "loadingMore" immediately, so a second trigger before React re-renders is ignored.
+- **No duplicates:** trending can shift between requests, so videos already on screen are filtered out when a new page is added.
+- **No stale pages:** switching category bumps a counter, and late responses for the old category are thrown away.
+- **No retry loops:** after a failed page, the marker is removed and a "Try again" button appears instead.
+- **Back button keeps your place:** loaded pages are kept in memory, so returning from a video restores the full list and your scroll position.
+- **Shimmer cards** fill the next row while a page loads, and "You're all caught up" appears at the end.
+
 ---
 
 ## 📊 API Quota Usage
@@ -402,6 +431,7 @@ The YouTube Data API gives **10,000 free units per day** (reset at midnight Paci
 | Action | API calls | Units |
 |---|---|---|
 | Open home or a category | `videos.list` + `channels.list` | 2 |
+| Scroll to load 24 more videos | `videos.list` + `channels.list` | 2 |
 | Search | `search.list` + `videos.list` + `channels.list` | 102 |
 | Open a watch link directly | `videos.list` + `channels.list` | 2 |
 | Repeat any of the above in the same session | served from cache | 0 |
@@ -429,7 +459,7 @@ That is roughly **95 searches a day**, plus plenty of browsing.
 
 ## 💡 Ideas to Extend
 
-- Infinite scroll using the API's `nextPageToken`
+- Infinite scroll on search results (`search.list` also returns a `nextPageToken`, but each page costs 100 units)
 - Comments on the watch page (`commentThreads.list`)
 - Watch history and "liked videos" saved in Redux or `localStorage`
 - A Shorts page with vertical, swipeable videos

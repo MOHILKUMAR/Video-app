@@ -5,7 +5,7 @@ import { VideoGrid } from "./VideoCard";
 const repeat = (count, render) =>
   Array.from({ length: count }, (_, i) => render(i));
 
-const VideoCardShimmer = () => (
+export const VideoCardShimmer = () => (
   <div>
     <div className="shimmer aspect-video rounded-xl" />
     <div className="mt-3 flex gap-3">
