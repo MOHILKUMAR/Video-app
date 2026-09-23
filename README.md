@@ -50,7 +50,7 @@ Browse trending videos by category, search with live autocomplete suggestions, s
 
 | Technology | Version | What it does in this project |
 |---|---|---|
-| [React Router](https://reactrouter.com/) (`react-router-dom`) | 7.6 | `createBrowserRouter` with nested routes and `<Outlet />`, `useSearchParams` for `?search_query=`, `?category=` and `?v=`, `useNavigate`, `<Link state>`, `<ScrollRestoration />` and a `*` 404 route |
+| [React Router](https://reactrouter.com/) (`react-router-dom`) | 7.18 | `createBrowserRouter` with nested routes and `<Outlet />`, `useSearchParams` for `?search_query=`, `?category=` and `?v=`, `useNavigate`, `<Link state>`, `<ScrollRestoration />` and a `*` 404 route |
 
 ### Styling and UI
 
@@ -66,8 +66,9 @@ Browse trending videos by category, search with live autocomplete suggestions, s
 
 | Technology | Version | What it does in this project |
 |---|---|---|
-| [Parcel](https://parceljs.org/) | 2.14 | Zero-config dev server with hot reload (`npm start`) and production bundler (`npm run build`); transpiles JSX, runs PostCSS, and inlines `process.env` values from `.env` |
-| [Node.js](https://nodejs.org/) + npm | 18+ | Runs Parcel and installs dependencies (tested on Node 22, npm 10) |
+| [Parcel](https://parceljs.org/) | 2.16 | Zero-config dev server with hot reload (`npm start`) and production bundler (`npm run build`); transpiles JSX, runs PostCSS, and inlines `process.env` values from `.env` |
+| [Node.js](https://nodejs.org/) + npm | 18+ | Runs Parcel and installs dependencies (tested on Node 22 locally and Node 24 on Vercel) |
+| [Vercel](https://vercel.com/) | n/a | Hosting: builds on every push to `main`, with `vercel.json` rewrites for client-side routes |
 
 ### APIs and data
 
@@ -157,6 +158,39 @@ Click the badge to see the day count (for example "Day 2 of 30"), the date the k
 
 ---
 
+## ▲ Deploy to Vercel
+
+The repo includes a [`vercel.json`](vercel.json), so Vercel needs almost no setup:
+
+```json
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+}
+```
+
+- **`outputDirectory: "dist"`** is where Parcel writes the production build.
+- **`rewrites`** sends every page URL (`/watch?v=...`, `/results?...`) to `index.html` so React Router can handle it. Without it, refreshing or opening a shared link returns a Vercel **404**. Real files like the JS and CSS bundles are still served normally.
+
+### Steps
+
+1. On [vercel.com](https://vercel.com/new), click **Add New → Project** and import this GitHub repo. Vercel detects the settings from `vercel.json`.
+2. Before deploying, open **Environment Variables** and add:
+
+   | Name | Value | Environments |
+   |---|---|---|
+   | `YOUTUBE_API_KEY` | your API key | Production, Preview |
+
+3. Click **Deploy**. Every push to `main` redeploys automatically.
+4. In the Google Cloud Console, add your Vercel address (for example `https://your-app.vercel.app/*`) to the key's **website restrictions**, next to `http://localhost:1234/*`.
+
+> **The key is read at build time.** Parcel copies `process.env.YOUTUBE_API_KEY` into the JavaScript bundle while building, so after adding or changing the variable in Vercel you must **redeploy** (Deployments → ⋯ → Redeploy) for it to take effect. `.env` is never uploaded to GitHub, so Vercel only knows the key through this setting.
+
+The API key reminder badge is development-only, so `YOUTUBE_API_KEY_CREATED` and `YOUTUBE_API_KEY_VALID_DAYS` aren't needed on Vercel.
+
+---
+
 ## 📁 Project Structure
 
 ```
@@ -164,6 +198,7 @@ Video-app/
 ├── index.html                 # Entry HTML, Roboto font, no-flash theme script
 ├── style.css                  # Tailwind 4, theme colors, shimmer + utilities
 ├── .env                       # API key + key reminder dates (not committed)
+├── vercel.json                # Vercel build output + client-side route rewrites
 ├── package.json
 └── src/
     ├── App.js                 # Redux store, routes, theme effect
@@ -471,6 +506,9 @@ That is roughly **95 search pages a day** (about 4,500 results), plus plenty of 
 | "This API key's restrictions don't allow requests" | Add your site (e.g. `http://localhost:1234/*`) to the key's website restrictions. |
 | `Failed to resolve 'react-router/dom'` | Already fixed: `package.json` enables `"packageExports"` for Parcel, which React Router 7 needs. |
 | Dev server stops with `ENOENT ... unlink` on Windows | A Parcel file-watcher hiccup when many files change at once. Run `npm start` again. |
+| Deployed site says "No YouTube API key found" | Add `YOUTUBE_API_KEY` in Vercel → Settings → Environment Variables, then **redeploy**. |
+| Deployed site says the key's restrictions block requests | Add your `*.vercel.app` address to the key's website restrictions in Google Cloud. |
+| Vercel shows 404 when refreshing `/watch` or `/results` | Make sure `vercel.json` (with the `rewrites` rule) is committed to the repo. |
 
 > **Security note:** in a frontend-only app the API key is included in the JavaScript sent to the browser, so anyone can find it. Always restrict the key to your website and to the YouTube Data API. For full protection, move API calls behind your own backend.
 
